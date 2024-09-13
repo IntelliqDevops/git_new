@@ -1,0 +1,79 @@
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+- main
+
+resources:
+- repo: self
+
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: 'e4e495a2-fb20-483b-979a-ea495bf8ecad'
+  imageRepository: 'votingapp'
+  containerRegistry: 'intelliq.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/vote/Dockerfile'
+  tag: '$(Build.BuildId)'
+
+  # Agent VM image name
+pool:
+ name: 'server6'
+
+stages:
+- stage: Build
+  displayName: Build
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      name: 'server6'
+    steps:
+    - task: Docker@2
+      displayName: Build 
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)'
+        command: 'build'
+        Dockerfile: '**/Dockerfile'
+        tags: '$(tag)'
+- stage: Push
+  displayName: Push
+  jobs:
+  - job: Push
+    displayName: Push
+    pool:
+      name: 'server6'
+    steps:
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)'
+        command: 'push'
+        tags: '$(tag)'
+- stage: Create
+  displayName: Create
+  jobs:
+  - job: Create
+    displayName: Create
+    pool:
+      name: 'server6'
+    steps:
+     - task: Bash@3
+       inputs:
+        targetType: 'inline'
+        script: 'docker run -d -P intelliq.azurecr.io/votingapp:104'
+- stage: Test
+  displayName: Test
+  jobs:
+  - job: Test
+    displayName: Test
+    pool:
+      name: 'server6'
+    steps:
+     - task: Bash@3
+       inputs:
+         targetType: 'inline'
+         script: 'git clone https://github.com/intelliqittrainings/FunctionalTesting.git'
+     
